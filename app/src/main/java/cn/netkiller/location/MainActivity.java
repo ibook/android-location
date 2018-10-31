@@ -14,11 +14,14 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -34,6 +37,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView status;
 
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private ListView listViewAddress;
+    private ArrayAdapter<String> adapter;
+    private ArrayList<String> list;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,11 +51,14 @@ public class MainActivity extends AppCompatActivity {
         textViewAltitude = (TextView) findViewById(R.id.textViewAltitude);
         textViewSpeed = (TextView) findViewById(R.id.textViewSpeed);
         textViewTime = (TextView) findViewById(R.id.textViewTime);
-//        TextView textViewLongitude = (TextView)findViewById(R.id.textViewLongitude);
         status = (TextView) findViewById(R.id.status);
 
-        this.location();
+        list = new ArrayList<String>();
+        adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, list);
+        listViewAddress = (ListView) findViewById(R.id.listViewAddress);
+        listViewAddress.setAdapter(adapter);
 
+        this.location();
     }
 
     private void loop() {
@@ -95,26 +104,18 @@ public class MainActivity extends AppCompatActivity {
         status.setText(currentProvider);
 
 
-        //根据当前provider对象获取最后一次位置信息
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
             ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_PERMISSION_CODE);
-            status.setText("设置权限");
             return;
         } else {
-            status.setText("权限 OK");
-//            this.location();
+            status.setText("正在获取GPS坐标请稍候...");
         }
 
         locationManager.requestLocationUpdates(currentProvider, 0, 0, locationListener);
+        //根据当前provider对象获取最后一次位置信息
         Location location = locationManager.getLastKnownLocation(currentProvider);
 
-        //如果位置信息为null，则请求更新位置信息
-//        if (location == null) {
-
-
-//        }
-
+        //如果位置信息不为null，则请求更新位置信息
         if (location != null) {
 
             textViewLatitude.setText(location.getLatitude() + "");
@@ -126,7 +127,6 @@ public class MainActivity extends AppCompatActivity {
             Log.d("Location", "Latitude: " + location.getLatitude());
             Log.d("Location", "location: " + location.getLongitude());
 
-
         } else {
 
             Log.d("Location", "Latitude: " + 0);
@@ -137,7 +137,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //创建位置监听器
-
     private LocationListener locationListener = new LocationListener() {
 
         //位置发生改变时调用
@@ -159,42 +158,37 @@ public class MainActivity extends AppCompatActivity {
             textViewSpeed.setText(location.getSpeed() + "");
             textViewTime.setText(dateFormat.format(new Date(location.getTime())) + "");
 
-
-            //        //直到获得最后一次位置信息为止，如果未获得最后一次位置信息，则显示默认经纬度
-//
-//        //解析地址并显示
+            //解析地址
             Geocoder geoCoder = new Geocoder(MainActivity.this, Locale.getDefault());
-//
+
             double latitude = location.getLatitude();
             double longitude = location.getLongitude();
-//
+
             List<Address> locationList = null;
             try {
-                locationList = geoCoder.getFromLocation(latitude, longitude, 1);
+                locationList = geoCoder.getFromLocation(latitude, longitude, 5);
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
-            Address address = locationList.get(0);//得到Address实例
-            status.setText(address.toString());
-//        String countryName = address.getCountryName();//得到国家名称，比如：中国
+//            Address address = locationList.get(0);//得到Address实例第一个地址
+//            status.setText(address.toString());
+//            String countryName = address.getCountryName();//得到国家名称，比如：中国
+//            String locality = address.getLocality();//得到城市名称，比如：北京市
 
-//        String locality = address.getLocality();//得到城市名称，比如：北京市
+            list.clear();
 
-//        for (int i = 0; address.getAddressLine(i) != null; i++) {
-//            String addressLine = address.getAddressLine(i);//得到周边信息，包括街道等，i=0，得到街道名称
-//            Log.i(TAG, "addressLine = " + addressLine);
-//        }
-//
-//        for (int i = 0; i < list.size(); i++) {
-//
-//            Address address = list.get(i);
-//
-//            Log.d("Location", address.getCountryName() + address.getAdminArea() + address.getFeatureName());
-//            status.setText(address.getCountryName() + address.getAdminArea() + address.getFeatureName());
-//        }
-//
+            for (Address address : locationList) {
 
+                for (int n = 0; address.getAddressLine(n) != null; n++) {
+                    String addressLine = address.getAddressLine(n);//得到周边信息，包括街道等，i=0，得到街道名称
+                    list.add(addressLine);
+                    Log.i("Location", "addressLine = " + addressLine);
+                    Log.d("Location", address.getCountryName() + address.getAdminArea() + address.getFeatureName());
+                }
+            }
+
+            adapter.notifyDataSetChanged();
 
         }
 
@@ -208,7 +202,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         //provider启用时调用
-
         @Override
         public void onProviderEnabled(String provider) {
 
@@ -248,7 +241,7 @@ public class MainActivity extends AppCompatActivity {
             case REQUEST_PERMISSION_CODE: {
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-//                    this.location();
+
                 } else {
                     // permission denied, boo! Disable the
                     // functionality that depends on this permission.
